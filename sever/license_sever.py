@@ -5,6 +5,7 @@ import os
 from datetime import date, timedelta, datetime
 from urllib.request import urlopen, URLError
 from database import LicenseDatabase
+import random
 
 PUBLIC_KEY_PATH = "./key_dir/public.key"                    # save to client application
 PRIVATE_KEY_PATH = "./key_dir/private.key"                  # only save on sever
@@ -12,10 +13,9 @@ PRIVATE_KEY_PATH = "./key_dir/private.key"                  # only save on sever
 PAGE_GET_TIME = 'http://just-the-time.appspot.com/'
 # LICENSE =  KEYGEN + DATA_EXPIRED (KEYGEN == rsa)
 
-
 class LICENSE_SEVER:
 
-    def __init__(self, create_new=False, num_day_avaible=30):
+    def __init__(self, create_new=False):
 
         if create_new:
             self.public_key, self.private_key = rsa.newkeys(512)   # same for all user, sent public_key with application
@@ -32,11 +32,9 @@ class LICENSE_SEVER:
                 with open(PRIVATE_KEY_PATH, 'rb') as pri_file:
                     private_key = b''.join(pri_file.readlines())
                     self.private_key = rsa.PrivateKey.load_pkcs1(keyfile=private_key, format='PEM')
-        self.num_day_availble = num_day_avaible
-        self.length_date_encode = 12
         self.db = LicenseDatabase()
 
-    def genLicense(self, data):
+    def genLicense(self, data, duration_license=30):
         """
 
         :param data: a dict: {'email': ..., 'MAC': ... }
@@ -44,17 +42,16 @@ class LICENSE_SEVER:
         """
 
         # DATE EXPIRED
-        if self.get_time_online():
+        if self.check_have_internet():
             date_today = self.get_time_online()
         else:
+            print("Not internet !")
             date_today = date.today()
 
-        # date_expired = date.today() + timedelta(days=self.num_day_availble)
-
-        date_expired = date_today + timedelta(days=self.num_day_availble)
+        date_expired = date_today + timedelta(days=duration_license)
         date_expired = date_expired.strftime('%Y%m%d')          # str
         date_expired_byte = date_expired.encode('ascii')
-        data_expired_encoded = b64encode(date_expired_byte)
+        date_expired_encoded = b64encode(date_expired_byte)
 
         #KEYGEN
         data_str = "".join(data.values())
@@ -62,9 +59,10 @@ class LICENSE_SEVER:
         keygen = b64encode(keygen).decode('ascii')      # byte -> str
 
         # LICENSE = DATE_EXPIRED + KEYGEN
-        self.length_date_encode = len(data_expired_encoded.decode('utf-8'))
-        license = keygen + data_expired_encoded.decode('utf-8')
+        self.length_date_encode = len(date_expired_encoded.decode('utf-8'))
+        date_expired_str = date_expired_encoded.decode('utf-8')
 
+        license = self.create_license_from_key_and_date(keygen, date_expired_str)
         print("Date expired: ", datetime.strptime(date_expired, '%Y%m%d').date())
 
 
@@ -74,31 +72,12 @@ class LICENSE_SEVER:
             print("Error: Exists this license")
             return None
         else:
-            print("Added license to db")
+            #print("Added license to db")
             self.db.addLicense(license)
 
         return license
 
-    # def checkLicense_v1 (self, data, license):
-    #     """
-    #
-    #     :param data: a dict: {'email': ..., 'MAC': ... }
-    #     :param keygen:
-    #     :return: is valid ?
-    #     """
-    #
-    #     data_str = "".join(data.values())
-    #     keygen, data_expired = self.get_infor_from_license(license)         # str type
-    #
-    #     try:
-    #         keygen = b64decode(keygen.encode('ascii'))
-    #         rsa.verify(data_str.encode('utf-8'), signature=keygen, pub_key=self.public_key)
-    #     except rsa.VerificationError:
-    #         print("Invalid key")
-    #         return False
-    #     else:
-    #         print("Valid key")
-    #         return True
+
 
     def checkLicense(self, license):
         """
@@ -120,14 +99,20 @@ class LICENSE_SEVER:
         return self.private_key
 
 
-    def get_infor_from_license(self, license):
+    def get_key_and_date_from_license(self, license):
         """
 
         :param license:
         :return: keygen and data_expired
         """
-        keygen, data_expired = license[:-12], license[-12:]
-        return keygen, data_expired
+        keygen, date_expired = license[:-11], license[-11:]
+        keygen = keygen + "=="
+        date_expired = date_expired + "="
+        return keygen, date_expired
+
+    def create_license_from_key_and_date(self, key_str, date_str):
+        license = key_str[:-2] + date_str[:-1]   # remove '=' character
+        return license
 
     def get_time_online(self):
         """
@@ -145,6 +130,27 @@ class LICENSE_SEVER:
             return True
         except URLError as err:
             return False
+
+    # def checkLicense_v1 (self, data, license):
+    #     """
+    #
+    #     :param data: a dict: {'email': ..., 'MAC': ... }
+    #     :param keygen:
+    #     :return: is valid ?
+    #     """
+    #
+    #     data_str = "".join(data.values())
+    #     keygen, data_expired = self.get_infor_from_license(license)         # str type
+    #
+    #     try:
+    #         keygen = b64decode(keygen.encode('ascii'))
+    #         rsa.verify(data_str.encode('utf-8'), signature=keygen, pub_key=self.public_key)
+    #     except rsa.VerificationError:
+    #         print("Invalid key")
+    #         return False
+    #     else:
+    #         print("Valid key")
+    #         return True
 
 
 

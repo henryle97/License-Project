@@ -28,45 +28,61 @@ class LICENSE_CLIENT:
         # return res
         data = {"license": license}
         url = URL_API + '/check_license'
-        result = requests.post(url, json=data, headers=HEADERS)
-        if result.ok:
-            print(result.json())
-            result_active = result.json()['result']
-            return result_active
-        else:
-            result.raise_for_status()
+        try:
+            result = requests.post(url, json=data, headers=HEADERS)
+            if result.ok:
+                print(result.json())
+                result_active = result.json()['result']
+                return result_active
+            else:
+                result.raise_for_status()
+                return False
+        except:
             return False
 
 
-    def get_infor_from_license(self, license):
+
+    def get_key_and_date_from_license(self, license):
         """
 
         :param license:
         :return: keygen and data_expired
         """
-        keygen, data_expired = license[:-12], license[-12:]
-        return keygen, data_expired
+        keygen, date_expired = license[:-11], license[-11:]
+        keygen = keygen + "=="
+        date_expired = date_expired + "="
+        return keygen, date_expired
 
     def check_expired(self, license):
-        keygen, data_expired = self.get_infor_from_license(license)
+        """
+        Internet Environment
+        :param license:
+        :return: False if not expired, True if expired / not internet
+        """
+
+        if not self.check_have_internet():
+            print("Not internet")
+            return True
+
+        keygen, date_expired = self.get_key_and_date_from_license(license)
 
         # DECODE date_expired
-        data_expired_byte = data_expired.encode('ascii')
-        data_expired_decode = b64decode(data_expired_byte)          # bytes
+        date_expired_byte = date_expired.encode('ascii')
+        date_expired_decode = b64decode(date_expired_byte)          # bytes
 
-        date_expired = datetime.strptime(data_expired_decode.decode('ascii'), '%Y%m%d').date()
+        date_expired = datetime.strptime(date_expired_decode.decode('ascii'), '%Y%m%d').date()
         if self.check_have_internet():
             date_now = self.get_time_online()
         else:
             date_now = date.today()
-        # date_now = date.today()
+
         if date_now > date_expired:
             print("Expired license")
             return True
-
         else:
             print("Not expired license")
             return False
+
     def get_time_online(self):
         """
 
@@ -88,7 +104,7 @@ class LICENSE_CLIENT:
 
 if __name__ == "__main__":
 
-    license = "d32X6dakM7G6p6bo8f+zoTvpSWBuW45jKNXuVISOLWUPAcPa2W7rzX8TK7q4JJyQCponqe4TrEqq2Rb0HFMmwg==MjAyMDA5MTA="
+    license = "hy4YE6hjCO6gu6/02eOHuWOvnCmaxtZez2TJpss4GFoyTlCsYBfkQUD8gSFmX2pG/FiePUSit26OV0kBFLQwAAMjAyMDA5MTI"
     lis_client = LICENSE_CLIENT()
 
     print(lis_client.activeLicense(license))

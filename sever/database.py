@@ -1,4 +1,3 @@
-from tinydb import TinyDB, Query
 
 import pymongo
 from pymongo import MongoClient
@@ -8,6 +7,7 @@ class LicenseDatabase:
         self.myMongo = MongoClient('mongodb://localhost:27017/')
         self.licenseDB = self.myMongo['LicenseDB']
         license_collection = self.licenseDB["license_col"]
+        #print(self.licenseDB.list_database_names())
         for x in license_collection.find({}):
             print(x)
 

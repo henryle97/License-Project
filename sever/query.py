@@ -51,9 +51,11 @@ def generate_license_query():
 
 
     email = request.args.get('email', default='', type=str)
+    duration_license = request.args.get('duration_license', default=30, type=int)
+
     print(email)
     data = {"email": email}
-    license_generated = license_sever.genLicense(data=data)
+    license_generated = license_sever.genLicense(data=data, duration_license=duration_license)
     if license_generated is None:
         result = {"Result": "License already exists"}
     else:

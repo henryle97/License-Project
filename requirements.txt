@@ -1,3 +1,2 @@
-getmac==0.8.2
 rsa==4.6
 pymongo==3.11.0
