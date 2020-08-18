@@ -47,7 +47,6 @@ class LICENSE_SEVER:
         else:
             print("Not internet !")
             date_today = date.today()
-
         date_expired = date_today + timedelta(days=duration_license)
         date_expired = date_expired.strftime('%Y%m%d')          # str
         date_expired_byte = date_expired.encode('ascii')

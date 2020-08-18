@@ -4,6 +4,7 @@ from base64 import  b64decode
 from datetime import date, timedelta, datetime
 from urllib.request import urlopen, URLError
 import requests
+import os
 
 URL_API = 'http://localhost:1915'
 
@@ -12,12 +13,13 @@ PAGE_GET_TIME = 'http://just-the-time.appspot.com/'
 HEADERS = {
     'Content-Type': 'application/json'
 }
+import sys
 
 class LICENSE_CLIENT:
 
     def __init__(self):
 
-        pass
+        self.license_backup = os.path.join(os.path.dirname(__file__), "license_backup/license.txt")
     def activeLicense(self, license):
         """
         Kich hoat license
@@ -31,16 +33,16 @@ class LICENSE_CLIENT:
         try:
             result = requests.post(url, json=data, headers=HEADERS)
             if result.ok:
+                self.save_license(license)
                 print(result.json())
                 result_active = result.json()['result']
                 return result_active
             else:
                 result.raise_for_status()
                 return False
-        except:
+        except Exception as error:
+            print(error)
             return False
-
-
 
     def get_key_and_date_from_license(self, license):
         """
@@ -67,15 +69,20 @@ class LICENSE_CLIENT:
         keygen, date_expired = self.get_key_and_date_from_license(license)
 
         # DECODE date_expired
-        date_expired_byte = date_expired.encode('ascii')
-        date_expired_decode = b64decode(date_expired_byte)          # bytes
-
-        date_expired = datetime.strptime(date_expired_decode.decode('ascii'), '%Y%m%d').date()
+        # prevent user edit license.txt
+        try:
+            date_expired_byte = date_expired.encode('ascii')
+            date_expired_decode = b64decode(date_expired_byte)          # bytes
+            print(date_expired_decode)
+            date_expired = datetime.strptime(date_expired_decode.decode('ascii'), '%Y%m%d').date()
+        except Exception as err:
+            print(err)
+            return False
         if self.check_have_internet():
             date_now = self.get_time_online()
         else:
             date_now = date.today()
-
+        print(date_expired)
         if date_now > date_expired:
             print("Expired license")
             return True
@@ -100,12 +107,28 @@ class LICENSE_CLIENT:
         except URLError as err:
             return False
 
+    def save_license(self, license):
+        with open(self.license_backup, 'w') as f:
+            f.write(license)
+
+    def load_license(self):
+        if not os.path.exists(self.license_backup):
+            return ""
+        with open(self.license_backup, 'r') as f:
+            license = f.read().strip()
+
+        return license
+
+    def check_license_valid(self, license):
+        pass
+
 
 
 if __name__ == "__main__":
 
-    license = "hy4YE6hjCO6gu6/02eOHuWOvnCmaxtZez2TJpss4GFoyTlCsYBfkQUD8gSFmX2pG/FiePUSit26OV0kBFLQwAAMjAyMDA5MTI"
+    license = "Cg0QrcO8nIDU0ETsC1Bbo5G+NHhwZ0qlA4p2ioeu+zBoOucBEIWk4yRn+wudKJanRY3D5dLHGmXJmj0xFHxWNwMjAyMDA5MTc"
     lis_client = LICENSE_CLIENT()
 
-    print(lis_client.activeLicense(license))
+    #print(lis_client.activeLicense(license))
+    license = lis_client.load_license()
     print(lis_client.check_expired(license))
